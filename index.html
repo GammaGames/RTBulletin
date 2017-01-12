@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+
+<head data-gwd-animation-mode="proMode">
+  <link rel="stylesheet" href="stylesheet.css" type="text/css">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="generator" content="Google Web Designer 1.3.2.0521">
+  <script src="jquery-2.1.1.min.js"></script>
+  <script src="maker.js"></script>
+  <link rel="shortcut icon" href="images/favicon.ico">
+  <title>RTBulletin</title>
+</head>
+
+<body class="gwd-body">
+  <header>
+    <div id="logo">
+      <img src="images/rtbulletin_logo.png" alt="RT Bulletin" title="">
+    </div>
+    <ul>
+      <li><a href="http://roosterteeth.com">RoosterTeeth</a>
+      </li>|
+      <li><a href="http://reddit.com/r/roosterteeth">RTSubreddit</a>
+      </li>|
+      <li><a href="http://achievementhunter.com/">Achievement Hunter</a>
+      </li>|
+      <li><a href="http://theknow.tv/">The Know</a>
+      </li>
+    </ul>
+  </header>
+  <div id="toggleLeft">
+    <img src="images/fhlogo.png" alt="<--" id="left" onclick="javascript:rotateLeft()">
+  </div>
+  <div id="toggleRight">
+    <img src="images/rtlogo.png" alt="-->" id="right" onclick="javascript:rotateRight()">
+  </div>
+  <div id="labelOutline">
+    <div id="label" class="label_loading">Building Board...</div>
+  </div>
+  <div id="board" class="border_ah">
+    <div class="spinner">
+      <div class="rect1"></div>
+      <div class="rect2"></div>
+      <div class="rect3"></div>
+      <div class="rect4"></div>
+      <div class="rect5"></div>
+    </div>
+  </div>
+  <div id="ahboard"></div>
+  <div id="rtboard"></div>
+  <div id="fhboard"></div>
+  <div id="knowboard"></div>
+  <div id="loading"></div>
+  <footer>
+    <p id="contact">Contact the developer</p>
+    <div id="wrap">
+      <a href="https://twitter.com/home?status=@GammaGames" target="_blank">
+        <div id="twitter"></div>
+      </a>
+      <a href="http://www.reddit.com/message/compose/?to=GammaGames" target="_blank">
+        <div id="reddit_foot"></div>
+      </a>
+    </div>
+    <br>
+    <p style="text-align:center; font-size:10px;">RTBulletin.com is not affiliated with or endorsed by Rooster Teeth Productions, LLC.</p>
+  </footer>
+  <script>
+    <!-- hold the videos -->
+    var allvideos = [];
+    var ahvideos = [];
+    var rtvideos = [];
+    var fhvideos = [];
+    var knowvideos = [];
+    var urls = ['https://gdata.youtube.com/feeds/users/letsplay/uploads?orderby=published&alt=json',
+      'https://gdata.youtube.com/feeds/users/roosterteeth/uploads?orderby=published&alt=json',
+      'https://gdata.youtube.com/feeds/users/UCboMX_UNgaPBsUOIgasn3-Q/uploads?orderby=published&alt=json',
+      'https://gdata.youtube.com/feeds/users/know/uploads?orderby=published&alt=json',
+      'https://gdata.youtube.com/feeds/users/theslowmoguys/uploads?orderby=published&alt=json',
+      'https://gdata.youtube.com/feeds/users/gamekids/uploads?orderby=published&alt=json'
+    ];
+
+     <!-- get all videos -->
+    var display = "ah";
+    var jxhr = [];
+    var result = [];
+    var date = new Date().getTime();
+    var req = $.each(urls, function(i, url) {
+      jxhr.push(
+        $.getJSON(url, null, function(json) {
+          result.push(json.feed);
+          var feed = json.feed;
+          $.each(feed.entry, function(i, entry) {
+            var video = {
+              name: entry.author[0].name.$t.toLowerCase(),
+              game: getGame(entry.title.$t.toLowerCase(), entry.author[0].name.$t.toLowerCase()),
+              title: titleSplit(entry.title.$t, entry.author[0].name.$t.toLowerCase()),
+              description: descriptionSplit(entry.media$group.media$description.$t, entry.author[0].name.$t.toLowerCase()),
+              id: entry.media$group.media$player[0].url.replace("&feature=youtube_gdata_player", "&amp;feature=youtube_gdata_player"),
+              published: dateSplit(entry.published.$t, date),
+              length: getTime(entry.media$group.media$content[0].duration),
+              thumbnail: entry.media$group.media$thumbnail[0].url,
+              views: entry.yt$statistics,
+              reddit: ""
+            };
+            addVideo(video);
+          });
+        })
+        <!-- if cannot connect to YouTube -->
+        .error(function() {
+          document.getElementById("label").innerHTML = "Oops!";
+          document.getElementById("board").innerHTML = '<div style="font-family: lobster_two; font-size:30px; color: #FFFFF2;"><br>We failed to load the YouTube links.<br>Please reload the page or try again later.</div>';
+        })
+      );
+    });
+
+     <!-- get reddit links after videos done -->
+    $.when.apply($, jxhr).done(function() {
+      ahvideos.sort(compare);
+      rtvideos.sort(compare);
+      knowvideos.sort(compare);
+      <!-- source: https://gist.github.com/sente/947491 -->				
+      var reddit = $.getJSON(
+        "https://www.reddit.com/user/rt_video_bot.json?limit=100&t=week",
+        function(data) {
+          $.each(
+            data.data.children,
+            function(i, post) {
+              if (post.data.subreddit === "roosterteeth") {
+                for (i = 0; i < ahvideos.length; i++) {
+                  if (ahvideos[i].reddit === "" && ahvideos[i].id === post.data.url) {
+                    ahvideos[i].reddit = 'http://reddit.com' + post.data.permalink;
+                    break;
+                  }
+                }
+                for (i = 0; i < rtvideos.length; i++) {
+                  if (rtvideos[i].reddit === "" && rtvideos[i].id === post.data.url) {
+                    rtvideos[i].reddit = 'http://reddit.com' + post.data.permalink;
+                    break;
+                  }
+                }
+              }
+            })
+        });
+
+      <!-- always make board, even if no reddit links-->
+      reddit.always(function() {
+        document.getElementById("label").className = "label_ah";
+        document.getElementById("label").innerHTML = "Achievement Hunter";
+        <!-- add cards to boards -->
+        for (i = 0; i < ahvideos.length; i++) {
+          document.getElementById("ahboard").innerHTML += getCard(ahvideos[i]);
+        }
+        for (i = 0; i < rtvideos.length; i++) {
+          document.getElementById("rtboard").innerHTML += getCard(rtvideos[i]);
+        }
+        for (i = 0; i < fhvideos.length; i++) {
+          document.getElementById("fhboard").innerHTML += getCard(fhvideos[i]);
+        }
+        for (i = 0; i < knowvideos.length; i++) {
+          document.getElementById("knowboard").innerHTML += getCard(knowvideos[i]);
+        }
+        <!-- rotate cards in ahboard -->
+        var cards = document.getElementById("ahboard").getElementsByTagName("card");
+        for (i = 0; i < cards.length; i++) {
+          rotateCards(cards);
+        }
+        <!-- rotate cards in rtboard -->
+        var cards = document.getElementById("rtboard").getElementsByTagName("card");
+        for (i = 0; i < cards.length; i++) {
+          rotateCards(cards);
+        }
+        <!-- rotate cards in fhboard -->
+        var cards = document.getElementById("fhboard").getElementsByTagName("card");
+        for (i = 0; i < cards.length; i++) {
+          rotateCards(cards);
+        }
+        <!-- rotate cards in knowboard -->
+        var cards = document.getElementById("knowboard").getElementsByTagName("card");
+        for (i = 0; i < cards.length; i++) {
+          rotateCards(cards);
+        }
+        <!-- set board, scroll to top -->
+        document.getElementById("board").innerHTML = document.getElementById("ahboard").innerHTML;
+        window.scrollTo(0, 0);
+      });
+    });
+
+    window.alert("Youtube updated its API to v3! Everything is broken!              -Gamma");
+  </script>
+</body>
+
+</html>

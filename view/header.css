@@ -1,0 +1,40 @@
+header {
+    display: block;
+    background: #171717 url("../img/radialbackground.png") no-repeat top center;
+    color: #E8E8E8;
+    height: 115px;
+    margin: 0;
+    
+    font-family: Arial;
+}
+
+header img{
+    margin-top: 0px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    height: 70px;
+    width: 200px
+}
+
+ul {
+    text-align: center;
+    padding: 0;
+}
+
+li {
+    font-size: 17px;
+    color: #E8E8E8;
+    padding-left: 5px;
+    padding-right: 5px;
+    display: inline;
+}
+
+li a {
+    color: #e8e8e8;
+}
+
+li a:hover {
+    color: #ffffff;
+    text-decoration: none;
+}
